@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Neon Cyber Roulette</title>
+    <title>Fukuoka Cyber Map Roulette</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Plus+Jakarta+Sans:wght@500;700&display=swap" rel="stylesheet">
     <style>
@@ -32,8 +32,279 @@
 
         h1 {
             font-family: 'Orbitron', sans-serif;
-            font-size: 1.8rem;
+            font-size: 1.5rem;
             color: var(--neon-cyan);
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.6);
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+            text-align: center;
+        }
+
+        /* マップコンテナ */
+        .map-container {
+            position: relative;
+            width: 340px;
+            height: 280px;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+            overflow: hidden;
+        }
+
+        /* スピン中のマップ発光エフェクト */
+        .map-container.spinning {
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 15px rgba(254, 1, 154, 0.3), inset 0 0 20px rgba(254, 1, 154, 0.2);
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* 現在スキャン中の市区町村ポップアップ */
+        #scan-overlay {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(9, 13, 22, 0.85);
+            border: 1px solid var(--neon-cyan);
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 5px var(--neon-cyan);
+            pointer-events: none;
+            display: none;
+        }
+
+        /* 結果表示エリア */
+        #result-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            font-weight: bold;
+            height: 3.5rem;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .winner-text {
+            color: #fff;
+            text-shadow: 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink);
+            animation: pulse 0.8s infinite alternate;
+        }
+
+        /* 操作エリア */
+        .controls {
+            width: 100%;
+            max-width: 360px;
+            background: var(--panel-bg);
+            padding: 20px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .spin-btn {
+            width: 100%;
+            padding: 16px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #00f2fe, #4facfe);
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            letter-spacing: 2px;
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.4);
+        }
+        .spin-btn:disabled {
+            background: #242b3d;
+            color: #5a657c;
+            box-shadow: none;
+        }
+
+        .info-text {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 15px;
+        }
+
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 100;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>FUKUOKA MAP SLOT</h1>
+
+    <div class="map-container" id="mapWrapper">
+        <canvas id="mapCanvas" width="680" height="560"></canvas>
+        <div id="scan-overlay">SCANNING...</div>
+    </div>
+
+    <div id="result-display">READY</div>
+
+    <div class="controls">
+        <button class="spin-btn" id="spinButton" onclick="spinMap()">TARGET LOCK</button>
+        <div class="info-text">福岡県内の全60市区町村からランダムにロックオンします</div>
+    </div>
+
+    <script>
+        // 福岡の全60市区町村データ（簡易的な地図上の相対位置 X, Y をプロットしています）
+        const regions = [
+            {name: "福岡市博多区", x:260, y:200}, {name: "福岡市中央区", x:240, y:200}, {name: "福岡市東区", x:270, y:170},
+            {name: "福岡市西区", x:190, y:210}, {name: "福岡市南区", x:240, y:230}, {name: "福岡市城南区", x:220, y:220},
+            {name: "福岡市早良区", x:210, y:260}, {name: "北九州市小倉北区", x:520, y:90}, {name: "北九州市小倉南区", x:530, y:130},
+            {name: "北九州市門司区", x:560, y:70}, {name: "北九州市若松区", x:470, y:70}, {name: "北九州市八幡東区", x:480, y:100},
+            {name: "北九州市八幡西区", x:460, y:110}, {name: "北九州市戸畑区", x:500, y:85}, {name: "大牟田市", x:240, y:510},
+            {name: "久留米市", x:290, y:380}, {name: "直方市", x:430, y:160}, {name: "飯塚市", x:390, y:240},
+            {name: "田川市", x:450, y:230}, {name: "柳川市", x:240, y:450}, {name: "八女市", x:330, y:460},
+            {name: "筑後市", x:270, y:430}, {name: "大川市", x:220, y:430}, {name: "行橋市", x:540, y:180},
+            {name: "豊前市", x:590, y:220}, {name: "中間市", x:440, y:120}, {name: "小郡市", x:290, y:340},
+            {name: "筑紫野市", x:290, y:280}, {name: "春日市", x:270, y:230}, {name: "大野城市", x:280, y:240},
+            {name: "宗像市", x:360, y:100}, {name: "太宰府市", x:290, y:250}, {name: "古賀市", x:310, y:150},
+            {name: "福津市", x:330, y:120}, {name: "うきは市", x:370, y:390}, {name: "宮若市", x:400, y:160},
+            {name: "嘉麻市", x:410, y:280}, {name: "朝倉市", x:360, y:340}, {name: "みやま市", x:260, y:480},
+            {name: "糸島市", x:140, y:230}, {name: "那珂川市", x:240, y:270}, {name: "宇美町", x:300, y:230},
+            {name: "篠栗町", x:310, y:200}, {name: "志免町", x:290, y:210}, {name: "須恵町", x:300, y:210},
+            {name: "新宮町", x:290, y:150}, {name: "久山町", x:310, y:180}, {name: "粕屋町", x:280, y:200},
+            {name: "芦屋町", x:450, y:60}, {name: "水巻町", x:450, y:90}, {name: "岡垣町", x:410, y:80},
+            {name: "遠賀町", x:430, y:90}, {name: "小竹町", x:420, y:190}, {name: "鞍手町", x:430, y:140},
+            {name: "桂川町", x:380, y:250}, {name: "筑前町", x:320, y:320}, {name: "東峰村", x:420, y:350},
+            {name: "大刀洗町", x:310, y:360}, {name: "大木町", x:240, y:430}, {name: "広川町", x:290, y:410},
+            {name: "香春町", x:470, y:200}, {name: "添田町", x:470, y:270}, {name: "糸田町", x:440, y:210},
+            {name: "川崎町", x:440, y:250}, {name: "大任町", x:470, y:230}, {name: "赤村", x:490, y:230},
+            {name: "福智町", x:450, y:180}, {name: "苅田町", x:550, y:140}, {name: "みやこ町", x:530, y:220},
+            {name: "吉富町", x:620, y:200}, {name: "上毛町", x:620, y:220}, {name: "築上町", x:570, y:210}
+        ];
+
+        const canvas = document.getElementById('mapCanvas');
+        const ctx = canvas.getContext('2d');
+        let activeIndex = -1;
+
+        // 福岡県の形を模したネオンベースライン（サイバー背景ライン）
+        function drawFukuokaOutline(highlightX = -1, highlightY = -1, isFinal = false) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 背景のグリッド線を描画（近未来感の演出）
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.03)";
+            ctx.lineWidth = 1;
+            for(let i=0, w=canvas.width; i<w; i+=40) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,canvas.height); ctx.stroke(); }
+            for(let i=0, h=canvas.height; i<h; i+=40) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width,i); ctx.stroke(); }
+
+            // 全市区町村のポインタ（点）を淡く描画
+            regions.forEach((r, idx) => {
+                ctx.beginPath();
+                if (idx === activeIndex) {
+                    // スキャン中・または当選時のハイライト
+                    ctx.arc(r.x, r.y, isFinal ? 14 : 8, 0, 2 * Math.PI);
+                    ctx.fillStyle = isFinal ? '#fe019a' : '#00f2fe';
+                    ctx.shadowColor = isFinal ? '#fe019a' : '#00f2fe';
+                    ctx.shadowBlur = isFinal ? 25 : 12;
+                    ctx.fill();
+                    
+                    // レーダーの照準線風エフェクト
+                    ctx.strokeStyle = isFinal ? 'rgba(254, 1, 154, 0.4)' : 'rgba(0, 242, 254, 0.3)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(r.x, r.y, isFinal ? 28 : 18, 0, 2 * Math.PI); ctx.stroke();
+                } else {
+                    // 通常時
+                    ctx.arc(r.x, r.y, 4, 0, 2 * Math.PI);
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+                    ctx.shadowBlur = 0;
+                    ctx.fill();
+                }
+            });
+            ctx.shadowBlur = 0; // シャドウのリセット
+        }
+
+        function spinMap() {
+            const btn = document.getElementById('spinButton');
+            const display = document.getElementById('result-display');
+            const wrapper = document.getElementById('mapWrapper');
+            const overlay = document.getElementById('scan-overlay');
+            
+            btn.disabled = true;
+            wrapper.classList.add('spinning');
+            overlay.style.display = 'block';
+            display.innerHTML = "SCANNING...";
+            display.className = "";
+
+            let speed = 40; // 初期シャッフル速度(ミリ秒)
+            let duration = 0;
+            let maxDuration = 3000; // 3秒間シャッフル
+
+            function shuffle() {
+                activeIndex = Math.floor(Math.random() * regions.length);
+                overlay.innerText = `LOCKON: ${regions[activeIndex].name}`;
+                drawFukuokaOutline();
+
+                duration += speed;
+                if (duration < maxDuration) {
+                    // 徐々に減速させる演出
+                    if (duration > maxDuration * 0.7) speed = 120;
+                    if (duration > maxDuration * 0.9) speed = 250;
+                    setTimeout(shuffle, speed);
+                } else {
+                    // 終了・確定
+                    btn.disabled = false;
+                    wrapper.classList.remove('spinning');
+                    overlay.style.display = 'none';
+                    
+                    // 確定演出
+                    drawFukuokaOutline(regions[activeIndex].x, regions[activeIndex].y, true);
+                    display.innerHTML = `<span class="winner-text">${regions[activeIndex].name} 🎉</span>`;
+                    createMapConfetti();
+                }
+            }
+            shuffle();
+        }
+
+        // 当選時に飛び散るデジタルパーティクル
+        function createMapConfetti() {
+            const colors = ['#00f2fe', '#fe019a', '#ff7300'];
+            for (let i = 0; i < 40; i++) {
+                const p = document.createElement('div');
+                p.classList.add('particle');
+                const size = Math.random() * 6 + 4;
+                p.style.width = `${size}px`;
+                p.style.height = `${size}px`;
+                p.style.background = colors[Math.floor(Math.random() * colors.length)];
+                p.style.boxShadow = `0 0 8px ${p.style.background}`;
+                p.style.left = '50%';
+                p.style.top = '25%';
+                document.body.appendChild(p);
+
+                const angle = Math.random() * Math.PI * 2;
+                const v = Math.random() * 120 + 60;
+                p.animate([
+                    { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
+                    { transform: `translate(calc(-50% + ${Math.cos(angle)*v}px), calc(-50% + ${Math.sin(angle)*v}px)) scale(0)`, opacity: 0 }
+                ], { duration: 1000, easing: 'ease-out', fill: 'forwards' });
+
+                setTimeout(() => p.remove(), 1000);
+            }
+        }
+
+        // 初期描画
+        drawFukuokaOutline();
+    </script>
+</body>
+</html>
             text-shadow: 0 0 10px rgba(0, 242, 254, 0.6);
             margin-bottom: 25px;
             letter-spacing: 2px;
