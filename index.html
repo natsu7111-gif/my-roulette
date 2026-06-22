@@ -79,7 +79,7 @@
             padding: 12px;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
-            font-size: 16px; /* iOSの自動ズーム防止 */
+            font-size: 16px;
         }
 
         button {
@@ -223,23 +223,23 @@
             btn.disabled = true;
             display.innerText = "抽選中...";
 
-            const extraSpins = 5 + Math.random() * 5; // 5〜10回転
+            // 5〜10回転のランダムな回転角を計算
+            const extraSpins = 5 + Math.random() * 5;
             const spinAngle = extraSpins * 2 * Math.PI;
             currentRotation += spinAngle;
 
+            // アニメーション実行
             canvas.style.transform = `rotate(${currentRotation}rad)`;
 
             setTimeout(() => {
                 btn.disabled = false;
                 
-                // 当選判定
+                // 【修正】現在の合計回転角から、0〜2πの範囲の角度を算出
                 const actualRotation = currentRotation % (2 * Math.PI);
                 const arcSize = (2 * Math.PI) / items.length;
                 
-                // 針が真上(1.5PI)にあるため、計算を調整
-                let winningIndex = items.length - Math.floor((actualRotation + (Math.PI * 1.5)) % (2 * Math.PI) / arcSize) - 1;
-                if (winningIndex < 0) winningIndex += items.length;
-                if (winningIndex >= items.length) winningIndex -= items.length;
+                // 針が真上（-90度 = 1.5π）を指しているため、時計回りの回転を考慮して計算
+                let winningIndex = Math.floor((3.5 * Math.PI - actualRotation) / arcSize) % items.length;
 
                 display.innerText = `結果: ${items[winningIndex]} 🎉`;
             }, 4000);
