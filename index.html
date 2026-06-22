@@ -2,90 +2,42 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>個人用ルーレット</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Professional Dynamic Roulette</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #2563eb;
+            --bg-color: #f8fafc;
+            --text-color: #1e293b;
+            --accent-color: #ef4444;
+        }
+
         body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
-            background-color: #f0f2f5;
-            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
         }
-        .container {
-            text-align: center;
-            background: white;
-            padding: 40px;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        }
-        #result {
-            font-size: 48px;
-            font-weight: bold;
-            color: #333;
-            margin: 30px 0;
-            min-height: 70px;
-        }
-        button {
-            font-size: 20px;
-            padding: 12px 40px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        button:disabled {
-            background-color: #ccc;
-        }
-    </style>
-</head>
-<body>
 
-<div class="container">
-    <h2>🎯 今日のランチ決定ルーレット</h2>
-    <!-- ここに結果が表示されます -->
-    <div id="result">？？？</div>
-    <button id="spinBtn" onclick="spinRoulette()">スタート！</button>
-</div>
+        h1 { font-size: 1.5rem; margin-bottom: 20px; color: #0f172a; }
 
-<script>
-    // ルーレットの中身（ここを自由に変えられます）
-    const items = ["ラーメン", "カレー", "お寿司", "ハンバーグ", "パスタ", "うどん"];
-    
-    let intervalId = null;
+        /* ルーレット外枠 */
+        .roulette-container {
+            position: relative;
+            width: 320px;
+            height: 320px;
+            margin-bottom: 30px;
+        }
 
-    function spinRoulette() {
-        const btn = document.getElementById("spinBtn");
-        const resultDiv = document.getElementById("result");
-        
-        // ボタンを無効化
-        btn.disabled = true;
-        
-        // 0.05秒ごとに文字を高速で切り替える（シャッフル演出）
-        intervalId = setInterval(() => {
-            const randomIndex = Math.floor(Math.random() * items.length);
-            resultDiv.innerText = items[randomIndex];
-        }, 50);
-
-        // 3秒後に自動でストップ
-        setTimeout(() => {
-            clearInterval(intervalId);
-            btn.disabled = false;
-            
-            // 最終決定の演出（少し文字を大きくする等）
-            resultDiv.style.color = "#ff4757";
-            setTimeout(() => { resultDiv.style.color = "#333"; }, 1000);
-        }, 3000);
-    }
-</script>
-
-</body>
-</html>
+        /* 針（インジケーター） */
+        .arrow {
+            position: absolute;
+            top: -15px;
+            left:
